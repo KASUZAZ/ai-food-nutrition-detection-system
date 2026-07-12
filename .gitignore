@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+pip-install.log
+pip-install-error.log
+tmp/
+.vscode/
