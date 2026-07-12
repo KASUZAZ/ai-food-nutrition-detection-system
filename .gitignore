@@ -3,5 +3,6 @@ __pycache__/
 *.pyc
 pip-install.log
 pip-install-error.log
+tmp-ai-server*.log
 tmp/
 .vscode/
