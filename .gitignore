@@ -6,3 +6,4 @@ pip-install-error.log
 tmp-ai-server*.log
 tmp/
 .vscode/
+arduino/**/secrets.h

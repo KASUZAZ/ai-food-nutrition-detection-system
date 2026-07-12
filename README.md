@@ -28,6 +28,9 @@ arduino/esp32_scale_nutrition/esp32_scale_nutrition.ino
 tools/real_ai_server.py
 data/food_calories.csv
 requirements-ai.txt
+START_SETUP.cmd
+START_AI_SERVER.cmd
+CONFIGURE_DEVICE.cmd
 ```
 
 ## 1. Sediakan AI Server Pada Laptop
@@ -36,21 +39,28 @@ Laptop, ESP32-CAM, dan ESP32 penimbang mesti menggunakan rangkaian WiFi yang sam
 
 ### Laptop Baharu (Windows 10/11)
 
-1. Salin seluruh folder projek ini ke laluan pendek, contohnya `C:\AI-Food-Nutrition-System`. Jangan salin satu sketch sahaja kerana AI server juga memerlukan folder `data`, `tools`, dan `requirements-ai.txt`.
-2. Pasang [Python 3.12 64-bit](https://www.python.org/downloads/windows/). Dalam installer, tandakan `Add Python to PATH`.
-3. Buka PowerShell dalam folder projek dan jalankan sekali sahaja:
+1. Download repository sebagai ZIP daripada GitHub dan extract seluruh folder ke laluan pendek, contohnya `C:\AI-Food-Nutrition-System`.
+2. Double-click `START_SETUP.cmd`.
+3. Setup akan memasang Python 3.12, environment AI, PyTorch/Transformers, model AI, Arduino CLI, ESP32 core, library `HX711`, dan `LiquidCrystal I2C` jika belum ada.
+4. Masukkan WiFi, password WiFi, IP laptop, dan IP ESP32 scale apabila wizard meminta. Nilai ini disimpan dalam fail `secrets.h` pada laptop pengguna sahaja dan tidak akan masuk GitHub.
+5. Upload ESP32 scale dahulu. Selepas Serial Monitor menunjukkan Scale IP, double-click `CONFIGURE_DEVICE.cmd` untuk memasukkan IP sebenar sebelum upload ESP32-CAM.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\setup_new_laptop.ps1
+Setiap kali mahu guna sistem, double-click:
+
+```text
+START_AI_SERVER.cmd
 ```
 
-4. Setiap kali mahu guna sistem, jalankan:
+Kali pertama setup boleh mengambil masa kerana model AI dan ESP32 toolchain dimuat turun. Benarkan Python melalui Windows Firewall pada rangkaian Private jika diminta.
 
-```powershell
-.\start_ai_server.ps1
-```
+### Apa Yang Setup Automatik Buat
 
-Kali pertama server dijalankan, model AI akan dimuat turun. Benarkan Python melalui Windows Firewall pada rangkaian Private jika diminta.
+| Bahagian | Automatik | Perlu pengguna buat sendiri |
+| --- | --- | --- |
+| Perisian laptop | Python 3.12, AI packages, model AI, Arduino CLI, ESP32 core dan library | Sambungan internet diperlukan |
+| Konfigurasi | Jana `secrets.h` tempatan untuk WiFi/IP | Masukkan WiFi dan IP sebenar apabila ditanya |
+| Hardware | Sediakan toolchain untuk compile/upload | Wiring, sambung USB/FTDI, upload board dan kalibrasi load cell |
+| Penggunaan harian | `START_AI_SERVER.cmd` hidupkan server AI | Hidupkan ESP32, letak makanan dan tunggu `LOCK` |
 
 ### Pemasangan Manual
 
@@ -90,12 +100,13 @@ Buka:
 arduino/esp32_scale_nutrition/esp32_scale_nutrition.ino
 ```
 
-Isi WiFi yang sama:
+WiFi akan dijana automatik dalam fail tempatan ini selepas `START_SETUP.cmd`:
 
 ```cpp
-const char *WIFI_SSID = "NAMA_WIFI";
-const char *WIFI_PASS = "KATA_LALUAN_WIFI";
+arduino/esp32_scale_nutrition/secrets.h
 ```
+
+Jangan upload atau commit `secrets.h` ke GitHub. Ia sudah dikecualikan oleh `.gitignore`.
 
 Sambungan hardware:
 
@@ -117,16 +128,13 @@ Buka:
 arduino/esp32_cam_detection_sender/esp32_cam_detection_sender.ino
 ```
 
-Isi WiFi, IP penimbang, dan IP laptop:
+`START_SETUP.cmd` menjana fail tempatan ini untuk WiFi, IP penimbang, dan IP laptop:
 
 ```cpp
-const char *WIFI_SSID = "NAMA_WIFI";
-const char *WIFI_PASS = "KATA_LALUAN_WIFI";
-const char *SCALE_URL = "http://192.168.1.50/api/food";
-const char *AI_SERVER_URL = "http://192.168.0.115:5000/classify";
+arduino/esp32_cam_detection_sender/secrets.h
 ```
 
-`192.168.0.115` ialah IPv4 laptop yang dikesan semasa sistem ini disediakan. Semak dan ubah semula jika alamat DHCP laptop berubah.
+Selepas ESP32 scale siap upload, dapatkan Scale IP pada Serial Monitor dan double-click `CONFIGURE_DEVICE.cmd` untuk kemas kini `NUTRITION_SCALE_URL`. Jika alamat IP laptop berubah, jalankan fail yang sama sekali lagi.
 
 Pilih board `AI Thinker ESP32-CAM`, aktifkan PSRAM jika pilihan itu tersedia, kemudian upload. Kod akan mengambil gambar sebenar setiap 12 saat, menyalakan LED flash, meminta inferens AI, dan menghantar keputusan yang sah kepada ESP32 penimbang.
 
