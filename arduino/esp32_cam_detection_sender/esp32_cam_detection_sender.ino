@@ -3,16 +3,22 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#include "secrets.example.h"
+#endif
+
 // ===========================
 // WiFi
 // ===========================
-const char *WIFI_SSID = "YOUR_WIFI";
-const char *WIFI_PASS = "YOUR_PASSWORD";
+const char *WIFI_SSID = NUTRITION_WIFI_SSID;
+const char *WIFI_PASS = NUTRITION_WIFI_PASS;
 
 // Change this to the IP shown by ESP32 scale Serial Monitor.
-const char *SCALE_URL = "http://192.168.1.50/api/food";
+const char *SCALE_URL = NUTRITION_SCALE_URL;
 
-const char *AI_SERVER_URL = "http://192.168.0.115:5000/classify";
+const char *AI_SERVER_URL = NUTRITION_AI_SERVER_URL;
 
 // ===========================
 // AI Thinker ESP32-CAM pins

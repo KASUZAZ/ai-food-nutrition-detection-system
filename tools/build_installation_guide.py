@@ -442,27 +442,26 @@ def build():
     story += [Box("Jika upload gagal", "Cuba baud rate 115200, periksa kabel USB, guna bekalan 5V yang lebih stabil, dan pastikan GPIO0 benar-benar ke GND sebelum tekan RESET.", RED, RED_LIGHT), PageBreak()]
 
     # Software
-    story += page_title("Pasang pada laptop baharu", "6. AI server sebenar")
-    story += [P("Panduan ini tidak bergantung pada laptop pembina projek. Ia sesuai untuk Windows 10/11 baharu. Gunakan Python 3.12 64-bit kerana PyTorch pada Windows menyokong Python 3.9 hingga 3.12.")]
-    story += [NumberedStep(1, "Salin folder projek", "Salin keseluruhan folder projek ke laluan pendek, contohnya C:\\AI-Food-Nutrition-System. Jangan salin sketch Arduino sahaja."), NumberedStep(2, "Pasang Python", "Muat turun Python 3.12 64-bit dari python.org/downloads/windows. Dalam installer, tandakan Add Python to PATH."), NumberedStep(3, "Jalankan setup sekali", "Buka PowerShell dalam folder projek, kemudian jalankan arahan di bawah.")]
-    story += [P("powershell -ExecutionPolicy Bypass -File .\\setup_new_laptop.ps1", "code")]
-    story += [NumberedStep(4, "Mulakan AI setiap kali", "Selepas setup selesai, gunakan arahan ini setiap kali mahu menjalankan sistem."), P(".\\start_ai_server.ps1", "code"), NumberedStep(5, "Buka dashboard", "Buka browser ke http://127.0.0.1:5000 untuk melihat gambar terakhir dan keputusan AI.")]
+    story += page_title("Setup satu klik pada laptop baharu", "6. AI server sebenar")
+    story += [P("Panduan ini sesuai untuk Windows 10/11 baharu. Pengguna tidak perlu memasang Python atau Arduino secara manual. Internet diperlukan pada kali pertama sahaja.")]
+    story += [NumberedStep(1, "Download dan extract", "Download GitHub ZIP, kemudian extract seluruh folder ke laluan pendek seperti C:\\AI-Food-Nutrition-System."), NumberedStep(2, "Double-click setup", "Double-click START_SETUP.cmd. Jangan tutup tetingkap hitam yang terbuka."), NumberedStep(3, "Biarkan setup bekerja", "Ia memasang Python 3.12, AI packages, model AI, Arduino CLI, ESP32 core, HX711 dan LiquidCrystal I2C."), NumberedStep(4, "Isi konfigurasi", "Masukkan WiFi, password, IP laptop dan Scale IP apabila wizard bertanya. Password disimpan tempatan sahaja."), NumberedStep(5, "Mulakan AI harian", "Selepas setup siap, double-click START_AI_SERVER.cmd dan buka http://127.0.0.1:5000.")]
+    story += [P("START_SETUP.cmd", "code"), Box("Jika IP scale belum diketahui", "Upload ESP32 scale dahulu. Baca Scale IP daripada Serial Monitor, kemudian double-click <b>CONFIGURE_DEVICE.cmd</b> dan masukkan IP baharu itu sebelum upload ESP32-CAM.", YELLOW, YELLOW_LIGHT)]
     story += [Box("Penting", "Windows Firewall mungkin bertanya tentang Python. Pilih <b>Allow access</b> pada Private networks supaya ESP32-CAM boleh menghubungi laptop.", YELLOW, YELLOW_LIGHT), PageBreak()]
 
     # Software config
-    story += page_title("Edit konfigurasi sebelum upload", "7. WiFi dan alamat IP")
-    story += [P("Dua sketch perlu menggunakan WiFi yang sama. Jangan tulis kata laluan WiFi dalam laporan atau screenshot pembentangan.")]
-    story += [P("Dalam kedua-dua sketch, isi WiFi:", "h2")]
-    story += [P('const char *WIFI_SSID = "NAMA_WIFI";<br/>const char *WIFI_PASS = "KATA_LALUAN_WIFI";', "code")]
-    story += [P("Dalam sketch ESP32-CAM, isi alamat ini:", "h2")]
-    story += [P('const char *SCALE_URL = "http://IP_ESP32_SCALE/api/food";<br/>const char *AI_SERVER_URL = "http://IP_LAPTOP:5000/classify";', "code")]
+    story += page_title("Konfigurasi WiFi dan alamat IP", "7. Fail local secrets")
+    story += [P("Anda tidak perlu edit sketch untuk WiFi atau IP. START_SETUP.cmd menjana fail <b>secrets.h</b> pada setiap folder sketch. Fail ini hanya berada pada laptop pengguna dan sudah diabaikan oleh Git.")]
+    story += [P("ESP32 scale menggunakan:", "h2")]
+    story += [P('arduino/esp32_scale_nutrition/secrets.h', "code")]
+    story += [P("ESP32-CAM menggunakan:", "h2")]
+    story += [P('arduino/esp32_cam_detection_sender/secrets.h', "code")]
     story += [table([
         ["Alamat", "Cara dapatkan"],
-        ["IP laptop", "Buka PowerShell dan taip <b>ipconfig</b>. Cari IPv4 pada adapter rangkaian aktif. Semasa panduan ini dibuat: 192.168.0.115."],
+        ["IP laptop", "Setup cuba mengesan IPv4 aktif. Semak semula jika laptop menggunakan WiFi/rangkaian lain."],
         ["IP ESP32 scale", "Upload sketch scale, buka Serial Monitor 115200, kemudian cari teks Scale IP."],
-        ["IP ESP32-CAM", "Buka Serial Monitor 115200 dan cari teks ESP32-CAM IP."],
+        ["Kemas kini IP", "Double-click CONFIGURE_DEVICE.cmd bila IP laptop atau IP scale berubah."],
     ], [4.2 * cm, 13.3 * cm]), Spacer(1, 0.25 * cm)]
-    story += [Box("IP boleh berubah", "Alamat IP biasanya diberi oleh router secara automatik. Jika WiFi/router berubah atau laptop reboot, semak semula IP laptop dan kemas kini AI_SERVER_URL.", YELLOW, YELLOW_LIGHT), PageBreak()]
+    story += [Box("IP boleh berubah", "Alamat IP biasanya diberi oleh router secara automatik. Jika WiFi/router berubah atau laptop reboot, double-click CONFIGURE_DEVICE.cmd dan masukkan nilai baharu. Jangan commit secrets.h ke GitHub.", YELLOW, YELLOW_LIGHT), PageBreak()]
 
     # Arduino code
     story += page_title("Upload kedua-dua sketch", "8. Arduino IDE")
@@ -497,7 +496,7 @@ def build():
     story += page_title("Checklist sebelum pembentangan", "11. Siap untuk digunakan")
     checks = [
         "Laptop, ESP32 scale dan ESP32-CAM berada pada WiFi yang sama.",
-        "Python 3.12 dan setup_new_laptop.ps1 telah selesai pada laptop yang digunakan.",
+        "START_SETUP.cmd telah selesai pada laptop yang digunakan.",
         "AI server hidup dan dashboard boleh dibuka pada port 5000.",
         "AI_SERVER_URL menggunakan IP laptop yang betul.",
         "SCALE_URL menggunakan IP ESP32 scale yang betul.",
