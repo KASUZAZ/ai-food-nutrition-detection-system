@@ -44,6 +44,23 @@ struct DetectionResult {
 
 unsigned long lastDetectionMs = 0;
 const unsigned long detectionIntervalMs = 12000;
+unsigned long lastCommandPollMs = 0;
+const unsigned long commandPollIntervalMs = 1000;
+bool cameraReady = false;
+
+bool pollCaptureRequest() {
+  String url = String(SCALE_URL);
+  int endpoint = url.lastIndexOf('/');
+  if (endpoint < 0) return false;
+  url = url.substring(0, endpoint) + "/camera-command";
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(2000);
+  int code = http.GET();
+  String body = http.getString();
+  http.end();
+  return code == 200 && body.indexOf("\"capture\":true") >= 0;
+}
 
 String urlencode(String value) {
   String encoded = "";
@@ -284,17 +301,28 @@ void setup() {
     return;
   }
 
+  cameraReady = true;
   runDetection();
+  lastDetectionMs = millis();
 }
 
 void loop() {
+  if (!cameraReady) {
+    delay(100);
+    return;
+  }
   if (WiFi.status() != WL_CONNECTED) {
     connectWiFi();
   }
 
   unsigned long now = millis();
-  if (now - lastDetectionMs >= detectionIntervalMs) {
-    lastDetectionMs = now;
+  bool manualCapture = false;
+  if (now - lastCommandPollMs >= commandPollIntervalMs) {
+    lastCommandPollMs = now;
+    manualCapture = pollCaptureRequest();
+  }
+  if (manualCapture || now - lastDetectionMs >= detectionIntervalMs) {
     runDetection();
+    lastDetectionMs = millis();
   }
 }

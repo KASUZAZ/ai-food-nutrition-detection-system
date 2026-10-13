@@ -72,6 +72,9 @@ const unsigned long lcdIntervalMs = 300;
 const unsigned long serialIntervalMs = 1000;
 
 WebServer server(80);
+bool captureRequested = false;
+unsigned long lastCameraPollMs = 0;
+bool cameraSeen = false;
 
 IPAddress currentIp() {
   if (WiFi.getMode() == WIFI_AP) {
@@ -240,7 +243,6 @@ void handleRoot() {
   String html = "";
   html += "<!doctype html><html><head>";
   html += "<meta name='viewport' content='width=device-width,initial-scale=1'>";
-  html += "<meta http-equiv='refresh' content='3'>";
   html += "<title>Food Nutrition System</title>";
   html += "<style>";
   html += "body{font-family:Arial;margin:24px;background:#f6f7f9;color:#111}";
@@ -248,6 +250,7 @@ void handleRoot() {
   html += "h1{font-size:22px;margin:0 0 12px}";
   html += "p{font-size:16px;margin:8px 0}";
   html += "b{display:inline-block;width:130px}";
+  html += ".actions{display:flex;gap:12px;margin-top:18px}button{padding:12px 24px;border:0;border-radius:6px;background:#087a5a;color:white;font-size:16px;cursor:pointer}button:disabled{opacity:.5}#message{min-height:24px}";
   html += "</style></head><body><div class='box'>";
   html += "<h1>Food Nutrition System</h1>";
   html += "<p><b>Food</b>" + foodName + "</p>";
@@ -256,6 +259,9 @@ void handleRoot() {
   html += "<p><b>Cal/g</b>" + String(caloriePerGram, 2) + "</p>";
   html += "<p><b>Confidence</b>" + String(confidence * 100.0, 0) + "%</p>";
   html += "<p><b>Status</b>" + String(isLocked ? "LOCKED" : "READING") + "</p>";
+  html += "<div class='actions'><button onclick=\"act('tare')\">Tare</button><button onclick=\"act('capture')\">Capture</button></div>";
+  html += "<p id='message' role='status' aria-live='polite'></p>";
+  html += "<script>let busy=false;async function act(action){busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);const m=document.getElementById('message');m.textContent=action==='tare'?'Taring...':'Requesting capture...';try{const r=await fetch('/api/'+action,{method:'POST'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');m.textContent=d.message;}catch(e){m.textContent=e.message;}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}async function refresh(){if(busy)return;try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const d=await r.json();const values=[d.food,Number(d.weight_g).toFixed(1)+' g',Number(d.calories).toFixed(0)+' kcal',Number(d.calorie_per_gram).toFixed(2),Math.round(d.confidence*100)+'%',d.locked?'LOCKED':'READING'];document.querySelectorAll('.box>p b').forEach((b,i)=>b.parentNode.lastChild.textContent=values[i]);}catch(e){document.getElementById('message').textContent='Scale connection lost. Retrying...';}}setInterval(refresh,3000);</script>";
   html += "</div></body></html>";
 
   server.send(200, "text/html", html);
@@ -330,6 +336,10 @@ void handleStatus() {
 }
 
 void handleTare() {
+  if (!scale.wait_ready_timeout(1000)) {
+    server.send(503, "application/json", "{\"ok\":false,\"error\":\"HX711 not ready. Check wiring.\"}");
+    return;
+  }
   scale.tare();
   weight = 0.0;
   lastWeight = 0.0;
@@ -340,11 +350,31 @@ void handleTare() {
   server.send(200, "application/json", "{\"ok\":true,\"message\":\"tare complete\"}");
 }
 
+void handleCapture() {
+  if (!cameraSeen || millis() - lastCameraPollMs > 15000) {
+    server.send(503, "application/json", "{\"ok\":false,\"error\":\"Camera unavailable or busy. Try again shortly.\"}");
+    return;
+  }
+  captureRequested = true;
+  server.send(202, "application/json", "{\"ok\":true,\"message\":\"Capture queued. Wait for the AI result.\"}");
+}
+
+void handleCameraCommand() {
+  cameraSeen = true;
+  lastCameraPollMs = millis();
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", captureRequested ? "{\"capture\":true}" : "{\"capture\":false}");
+  captureRequested = false;
+}
+
 void setupServer() {
   server.on("/", HTTP_GET, handleRoot);
   server.on("/api/food", HTTP_ANY, handleFood);
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/tare", HTTP_GET, handleTare);
+  server.on("/api/tare", HTTP_POST, handleTare);
+  server.on("/api/capture", HTTP_POST, handleCapture);
+  server.on("/api/camera-command", HTTP_GET, handleCameraCommand);
 
   server.begin();
   Serial.println("HTTP server started");

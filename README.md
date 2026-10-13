@@ -146,6 +146,13 @@ Rice      150g
 
 Dashboard ESP32 penimbang boleh dibuka pada `http://<Scale-IP>/`. Endpoint status ialah `http://<Scale-IP>/api/status`, dan tare boleh dibuat melalui `http://<Scale-IP>/api/tare`.
 
+Dashboard penimbang mempunyai dua butang:
+
+- **Tare**: letakkan pinggan kosong dahulu, kemudian tekan untuk menetapkan berat kepada 0 g dan melepaskan bacaan `LOCK`.
+- **Capture**: tekan selepas makanan diletakkan untuk meminta ESP32-CAM mengambil gambar baharu, menjalankan AI, dan menghantar keputusan yang diterima kepada penimbang. Mesej `Capture queued` bermaksud permintaan telah diterima, belum bermaksud pengesanan selesai. Kamera menyemak permintaan setiap satu saat apabila tidak sedang menjalankan pengesanan.
+
+Upload semula **kedua-dua sketch** untuk menggunakan butang Capture. Pastikan `SCALE_URL` dalam ESP32-CAM merujuk kepada IP penimbang yang betul. Pengesanan automatik setiap 12 saat masih berjalan. Jika kamera belum tersambung atau sedang sibuk terlalu lama, dashboard memaparkan ralat dan anda boleh cuba lagi. Gambar dan keputusan AI boleh dilihat pada dashboard laptop port 5000.
+
 ## Kelas Makanan Dan Kalori
 
 Model membandingkan gambar dengan semua nama dalam `data/food_calories.csv`. Tambah atau ubah makanan di situ, kemudian restart server AI. Nilai ialah anggaran kalori per gram, bukan analisis makmal.
