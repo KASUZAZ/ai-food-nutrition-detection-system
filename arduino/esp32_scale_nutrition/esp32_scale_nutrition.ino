@@ -5,6 +5,12 @@
 #include <LiquidCrystal_I2C.h>
 #include "HX711.h"
 
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#include "secrets.example.h"
+#endif
+
 #define ENABLE_BLYNK 0
 
 #if ENABLE_BLYNK
@@ -18,8 +24,8 @@ BlynkTimer blynkTimer;
 // ===========================
 // WiFi
 // ===========================
-const char *WIFI_SSID = "YOUR_WIFI";
-const char *WIFI_PASS = "YOUR_PASSWORD";
+const char *WIFI_SSID = NUTRITION_WIFI_SSID;
+const char *WIFI_PASS = NUTRITION_WIFI_PASS;
 
 const char *AP_SSID = "NutritionScale";
 const char *AP_PASS = "12345678";
