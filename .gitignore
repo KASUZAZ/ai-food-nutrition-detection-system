@@ -6,3 +6,15 @@ pip-install-error.log
 tmp-ai-server*.log
 tmp/
 .vscode/
+data/*.sqlite3*
+data/backups/
+.vercel/
+.env.local
+.env.*.local
+data/*.local.json
+
+.env*
+!.env.example
+node_modules/
+.agents/
+skills-lock.json

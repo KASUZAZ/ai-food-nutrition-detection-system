@@ -17,7 +17,7 @@ flowchart LR
   D --> F
   F --> G["Calorie calculation"]
   G --> H["LCD display"]
-  G --> I["Blynk / web dashboard"]
+  G --> I["Website utama + sejarah SQLite"]
 ```
 
 ## Demo Step
@@ -25,13 +25,15 @@ flowchart LR
 1. Hidupkan ESP32 scale.
 2. Tunjuk LCD keluar `System ready`.
 3. Buka Serial Monitor dan tunjuk IP ESP32 scale.
-4. Jalankan `python tools\\real_ai_server.py` dan tunjuk status `AI ready`.
+4. Jalankan `.\start_ai_server.ps1 -ScaleUrl "http://IP_PENIMBANG"`, tetapkan kata laluan dan tunggu `AI ready`.
 5. Hidupkan ESP32-CAM. LED menyala ketika gambar sebenar diambil.
 6. Tunjuk gambar dan confidence sebenar pada dashboard AI port 5000.
 7. Letak makanan atas load cell.
 8. Tunggu bacaan stabil sampai status `LOCK`.
 9. LCD papar makanan, berat, dan kalori.
-10. Buka browser ke IP ESP32 scale untuk tunjuk dashboard ringkas.
+10. Pada website laptop port 5000, tunjuk rekod automatik dengan gambar, gram, kalori dan waktu makan.
+11. Buka akses pentadbir menggunakan kata laluan. Tunjuk edit rekod dan tambah jenis makanan di Pangkalan kalori.
+12. Tutup dan buka website semula untuk menunjukkan data masih tersimpan. Angkat makanan atau tare sebelum hidangan seterusnya.
 
 ## Contoh Output
 
@@ -49,7 +51,8 @@ Status: LOCKED
 - Detection makanan dihantar melalui WiFi API.
 - Formula nutrisi mudah diterangkan dan boleh dikembangkan.
 - Keputusan confidence rendah ditolak supaya sistem tidak memaparkan tekaan rawak.
-- Blynk boleh diaktifkan untuk dashboard IoT.
+- Semua pemantauan dan edit data melalui satu website; tiada Blynk.
+- Data dan gambar disimpan dalam SQLite dan kekal selepas restart.
 
 ## Limitations Yang Boleh Disebut
 
@@ -63,5 +66,5 @@ Status: LOCKED
 - Fine-tune model menggunakan gambar yang diambil daripada ESP32-CAM sendiri.
 - Tambah database makanan Malaysia seperti nasi lemak, mee goreng, roti canai.
 - Tambah nutrition detail seperti protein, carbohydrate, fat.
-- Simpan history makanan harian dalam cloud database.
-- Tambah mobile app atau Blynk dashboard yang lebih lengkap.
+- Tambah sandaran cloud untuk sejarah makanan SQLite.
+- Tambah akaun berasingan bagi pengguna berlainan.

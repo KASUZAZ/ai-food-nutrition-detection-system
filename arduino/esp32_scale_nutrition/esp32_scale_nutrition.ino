@@ -1,25 +1,19 @@
 #include <Arduino.h>
+#include <esp_system.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <LiquidCrystal_I2C.h>
 #include "HX711.h"
 
-#define ENABLE_BLYNK 0
-
-#if ENABLE_BLYNK
-#define BLYNK_TEMPLATE_ID "YOUR_TEMPLATE_ID"
-#define BLYNK_TEMPLATE_NAME "Food Nutrition System"
-#define BLYNK_AUTH_TOKEN "YOUR_BLYNK_TOKEN"
-#include <BlynkSimpleEsp32.h>
-BlynkTimer blynkTimer;
-#endif
-
 // ===========================
 // WiFi
 // ===========================
 const char *WIFI_SSID = "YOUR_WIFI";
 const char *WIFI_PASS = "YOUR_PASSWORD";
+
+// The unified website runs on the laptop. Keep this IP in sync with the camera.
+const char *WEBSITE_URL = "http://192.168.0.115:5000/";
 
 const char *AP_SSID = "NutritionScale";
 const char *AP_PASS = "12345678";
@@ -59,6 +53,22 @@ String foodName = "Waiting food";
 float caloriePerGram = 0.0;
 float confidence = 0.0;
 unsigned long lastFoodUpdateMs = 0;
+String detectionId = "";
+String bootId;
+unsigned long measurementNumber = 0;
+bool hadFood = false;
+bool sensorReady = false;
+
+String measurementId() {
+  return bootId + "-" + String(measurementNumber);
+}
+
+void clearFood() {
+  foodName = "Waiting food";
+  caloriePerGram = 0.0;
+  confidence = 0.0;
+  detectionId = "";
+}
 
 // ===========================
 // Timing
@@ -133,10 +143,25 @@ String extractJsonString(const String &body, const String &key) {
   int firstQuote = body.indexOf('"', colonIndex + 1);
   if (firstQuote < 0) return "";
 
-  int secondQuote = body.indexOf('"', firstQuote + 1);
-  if (secondQuote < 0) return "";
-
-  return body.substring(firstQuote + 1, secondQuote);
+  String value = "";
+  bool escaped = false;
+  for (int i = firstQuote + 1; i < body.length(); i++) {
+    char c = body[i];
+    if (escaped) {
+      if (c == 'n') value += '\n';
+      else if (c == 'r') value += '\r';
+      else if (c == 't') value += '\t';
+      else value += c;
+      escaped = false;
+    } else if (c == '\\') {
+      escaped = true;
+    } else if (c == '"') {
+      return value;
+    } else {
+      value += c;
+    }
+  }
+  return "";
 }
 
 float extractJsonFloat(const String &body, const String &key, float fallback) {
@@ -240,31 +265,8 @@ void connectWiFi() {
 }
 
 void handleRoot() {
-  String html = "";
-  html += "<!doctype html><html><head>";
-  html += "<meta name='viewport' content='width=device-width,initial-scale=1'>";
-  html += "<title>Food Nutrition System</title>";
-  html += "<style>";
-  html += "body{font-family:Arial;margin:24px;background:#f6f7f9;color:#111}";
-  html += ".box{max-width:520px;background:white;border:1px solid #ddd;padding:18px;border-radius:8px}";
-  html += "h1{font-size:22px;margin:0 0 12px}";
-  html += "p{font-size:16px;margin:8px 0}";
-  html += "b{display:inline-block;width:130px}";
-  html += ".actions{display:flex;gap:12px;margin-top:18px}button{padding:12px 24px;border:0;border-radius:6px;background:#087a5a;color:white;font-size:16px;cursor:pointer}button:disabled{opacity:.5}#message{min-height:24px}";
-  html += "</style></head><body><div class='box'>";
-  html += "<h1>Food Nutrition System</h1>";
-  html += "<p><b>Food</b>" + foodName + "</p>";
-  html += "<p><b>Weight</b>" + String(activeWeight(), 1) + " g</p>";
-  html += "<p><b>Calories</b>" + String(totalCalories(), 0) + " kcal</p>";
-  html += "<p><b>Cal/g</b>" + String(caloriePerGram, 2) + "</p>";
-  html += "<p><b>Confidence</b>" + String(confidence * 100.0, 0) + "%</p>";
-  html += "<p><b>Status</b>" + String(isLocked ? "LOCKED" : "READING") + "</p>";
-  html += "<div class='actions'><button onclick=\"act('tare')\">Tare</button><button onclick=\"act('capture')\">Capture</button></div>";
-  html += "<p id='message' role='status' aria-live='polite'></p>";
-  html += "<script>let busy=false;async function act(action){busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);const m=document.getElementById('message');m.textContent=action==='tare'?'Taring...':'Requesting capture...';try{const r=await fetch('/api/'+action,{method:'POST'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');m.textContent=d.message;}catch(e){m.textContent=e.message;}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}async function refresh(){if(busy)return;try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)return;const d=await r.json();const values=[d.food,Number(d.weight_g).toFixed(1)+' g',Number(d.calories).toFixed(0)+' kcal',Number(d.calorie_per_gram).toFixed(2),Math.round(d.confidence*100)+'%',d.locked?'LOCKED':'READING'];document.querySelectorAll('.box>p b').forEach((b,i)=>b.parentNode.lastChild.textContent=values[i]);}catch(e){document.getElementById('message').textContent='Scale connection lost. Retrying...';}}setInterval(refresh,3000);</script>";
-  html += "</div></body></html>";
-
-  server.send(200, "text/html", html);
+  server.sendHeader("Location", WEBSITE_URL);
+  server.send(302, "text/plain", "Open the unified nutrition website on the laptop.");
 }
 
 void handleFood() {
@@ -296,6 +298,8 @@ void handleFood() {
     incomingConf = server.arg("confidence").toFloat();
   }
 
+  String incomingDetectionId = server.arg("detection_id");
+
   if (server.method() == HTTP_POST && server.hasArg("plain")) {
     String body = server.arg("plain");
     String jsonName = extractJsonString(body, "food");
@@ -311,6 +315,7 @@ void handleFood() {
     incomingCal = extractJsonFloat(body, "cal", incomingCal);
     incomingConf = extractJsonFloat(body, "confidence", incomingConf);
     incomingConf = extractJsonFloat(body, "conf", incomingConf);
+    incomingDetectionId = extractJsonString(body, "detection_id");
   }
 
   if (incomingName.length() == 0) {
@@ -319,6 +324,7 @@ void handleFood() {
   }
 
   setFood(incomingName, incomingCal, incomingConf);
+  detectionId = incomingDetectionId;
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
@@ -329,7 +335,10 @@ void handleStatus() {
   json += "\"weight_g\":" + String(activeWeight(), 1) + ",";
   json += "\"calories\":" + String(totalCalories(), 1) + ",";
   json += "\"locked\":" + String(isLocked ? "true" : "false") + ",";
-  json += "\"confidence\":" + String(confidence, 2);
+  json += "\"confidence\":" + String(confidence, 2) + ",";
+  json += "\"detection_id\":\"" + jsonEscape(detectionId) + "\",";
+  json += "\"measurement_id\":\"" + measurementId() + "\",";
+  json += "\"sensor_ready\":" + String(sensorReady ? "true" : "false");
   json += "}";
 
   server.send(200, "application/json", json);
@@ -346,6 +355,10 @@ void handleTare() {
   lockedWeight = 0.0;
   stableCount = 0;
   isLocked = false;
+
+  measurementNumber++;
+  hadFood = false;
+  clearFood();
 
   server.send(200, "application/json", "{\"ok\":true,\"message\":\"tare complete\"}");
 }
@@ -382,6 +395,7 @@ void setupServer() {
 
 void readWeight() {
   if (!scale.is_ready()) {
+    sensorReady = false;
     Serial.println("HX711 not ready");
     lcdLine(0, "HX711 ERROR");
     lcdLine(1, "Check wiring");
@@ -389,9 +403,20 @@ void readWeight() {
   }
 
   float rawWeight = scale.get_units(5);
+  sensorReady = true;
   if (rawWeight < 1.0) rawWeight = 0.0;
 
   weight = rawWeight;
+
+  // A new placement gets a new database key. Repeated camera captures of the
+  // same plate must never create duplicate meal records.
+  if (weight > 1.0) {
+    hadFood = true;
+  } else if (hadFood) {
+    measurementNumber++;
+    hadFood = false;
+    clearFood();
+  }
 
   if (!isLocked) {
     if (fabs(weight - lastWeight) < stableThreshold) {
@@ -447,18 +472,9 @@ void printSerialStatus() {
   Serial.println(isLocked ? "LOCKED" : "READING");
 }
 
-#if ENABLE_BLYNK
-void pushToBlynk() {
-  Blynk.virtualWrite(V0, activeWeight());
-  Blynk.virtualWrite(V1, totalCalories());
-  Blynk.virtualWrite(V2, foodName);
-  Blynk.virtualWrite(V3, isLocked ? 1 : 0);
-  Blynk.virtualWrite(V4, confidence);
-}
-#endif
-
 void setup() {
   Serial.begin(115200);
+  bootId = String(esp_random(), HEX) + String(esp_random(), HEX);
   delay(300);
 
   Wire.begin(21, 22);
@@ -475,14 +491,6 @@ void setup() {
   connectWiFi();
   setupServer();
 
-#if ENABLE_BLYNK
-  if (WiFi.status() == WL_CONNECTED) {
-    Blynk.config(BLYNK_AUTH_TOKEN);
-    Blynk.connect(5000);
-    blynkTimer.setInterval(2000L, pushToBlynk);
-  }
-#endif
-
   lcd.clear();
   lcdLine(0, "System ready");
   lcdLine(1, currentIp().toString());
@@ -491,13 +499,6 @@ void setup() {
 
 void loop() {
   server.handleClient();
-
-#if ENABLE_BLYNK
-  if (WiFi.status() == WL_CONNECTED) {
-    Blynk.run();
-    blynkTimer.run();
-  }
-#endif
 
   unsigned long now = millis();
 

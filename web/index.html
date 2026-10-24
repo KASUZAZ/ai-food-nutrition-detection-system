@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#12634b">
+  <title>NutriTrack · Rekod pemakanan</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="NutriTrack laman utama"><span class="brand-icon">N<span>·</span></span><span>NutriTrack<small>FOOD NUTRITION SYSTEM</small></span></a>
+    <p class="nav-label">RUANG KERJA</p>
+    <nav aria-label="Navigasi utama">
+      <button class="nav-button active" data-tab="live"><span aria-hidden="true">◉</span> Paparan langsung</button>
+      <button class="nav-button" data-tab="history"><span aria-hidden="true">▤</span> Sejarah makanan</button>
+      <button class="nav-button" data-tab="catalog"><span aria-hidden="true">▦</span> Pangkalan kalori</button>
+    </nav>
+    <div class="sidebar-note"><span class="small-leaf" aria-hidden="true">↗</span><strong>Kenali hidangan anda.</strong><p>Pantau makanan, berat dan anggaran kalori dalam satu tempat.</p></div>
+    <div class="sidebar-footer"><span class="status-dot"></span> <span id="storage-label">Memuatkan simpanan…</span><small>Waktu Malaysia · UTC+08:00</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span>Sistem pemakanan pintar <span class="separator">/</span> <strong id="breadcrumb">Paparan langsung</strong></span><button id="auth-button" class="button button-outline">Buka akses pentadbir</button></header>
+    <main>
+      <div class="page-heading"><div><p class="eyebrow">SETIAP HIDANGAN, LEBIH JELAS</p><h1 id="page-title">Paparan langsung</h1><p id="page-subtitle">Bacaan semasa dan rekod pemakanan anda.</p></div><div class="date-chip" id="today-label"></div></div>
+      <p id="notice" class="notice" role="status" aria-live="polite" hidden></p>
+      <section id="panel-live" aria-label="Paparan langsung">
+        <div class="metrics">
+          <article class="metric"><span class="metric-label">Berat semasa <span aria-hidden="true">⚖</span></span><strong id="live-weight">— <small>g</small></strong><span id="weight-hint" class="metric-hint">Menunggu penimbang</span></article>
+          <article class="metric"><span class="metric-label">Kalori hidangan <span aria-hidden="true">◈</span></span><strong id="live-calories">— <small>kcal</small></strong><span class="metric-hint">Anggaran berdasarkan berat</span></article>
+          <article class="metric"><span class="metric-label">Jumlah hari ini <span aria-hidden="true">↗</span></span><strong id="daily-calories">0 <small>kcal</small></strong><span class="metric-hint">Daripada rekod yang disimpan</span></article>
+          <article class="metric"><span class="metric-label">Hidangan hari ini <span aria-hidden="true">▤</span></span><strong id="daily-count">0 <small>rekod</small></strong><span class="metric-hint">Satu rekod bagi setiap hidangan</span></article>
+        </div>
+        <div class="live-grid">
+          <article class="card camera-card"><div class="card-heading"><h2>Hidangan semasa</h2><span id="connection" class="badge">Menunggu peranti</span></div><div class="camera-frame"><img id="latest-image" alt="Gambar makanan terkini daripada ESP32-CAM" hidden><div id="camera-empty" class="empty-camera"><span class="camera-symbol" aria-hidden="true">▣</span><strong>Menunggu gambar makanan</strong><p>Hidupkan ESP32-CAM pada rangkaian WiFi yang sama.</p></div><span class="photo-caption" id="photo-caption" hidden>ESP32-CAM · Gambar terakhir</span></div><div class="camera-footer"><span><span class="status-dot"></span> Bacaan dikemas kini setiap saat</span><span id="updated-at">Belum ada bacaan</span></div></article>
+          <article class="card detection-card"><div class="card-heading"><h2>Hasil pengesanan</h2><span class="tag">AI VISION</span></div><p class="field-label">JENIS MAKANAN</p><h3 id="detected-food">Belum dikesan</h3><p id="detection-note" class="muted">Keputusan AI akan dipaparkan di sini.</p><dl class="detection-details"><div><dt>Keyakinan AI</dt><dd id="confidence">—</dd></div><div><dt>Kalori per 100 g</dt><dd id="calorie-rate">—</dd></div><div><dt>Status berat</dt><dd id="lock-status">—</dd></div><div><dt>Waktu pengesanan</dt><dd id="detected-time">—</dd></div></dl><div class="device-actions"><button id="capture-button" class="button" data-admin disabled>Ambil gambar</button><button id="tare-button" class="button button-outline" data-admin disabled>Tare / sifar</button></div><p class="help-text">Akses pentadbir diperlukan untuk mengawal peranti. Letakkan pinggan kosong sebelum tare.</p></article>
+        </div>
+        <div class="info-strip"><span aria-hidden="true">ⓘ</span><p>Rekod disimpan automatik apabila makanan dikenal pasti dan berat stabil. Angkat makanan atau tekan tare sebelum hidangan seterusnya.</p></div>
+        <section class="card"><div class="card-heading"><div><h2>Rekod terkini</h2><p class="muted">Gambar dan maklumat hidangan yang telah disimpan.</p></div><button class="text-button" data-tab="history">Lihat semua →</button></div><div id="recent-table"></div></section>
+      </section>
+      <section id="panel-history" hidden aria-label="Sejarah makanan"><div class="card"><div class="card-heading wrap"><div><h2>Semua rekod makanan</h2><p class="muted">Waktu makan dipaparkan dalam waktu Malaysia.</p></div><div class="toolbar"><label class="date-filter">Tarikh <input id="history-date" type="date"></label><button id="clear-date" class="button button-outline">Semua tarikh</button><button id="new-meal" class="button" data-admin disabled>+ Tambah rekod</button></div></div><div id="history-table"></div></div></section>
+      <section id="panel-catalog" hidden aria-label="Pangkalan kalori"><div class="card"><div class="card-heading"><div><h2>Rujukan kalori makanan</h2><p class="muted">Perubahan digunakan oleh AI tanpa perlu restart server.</p></div><button id="new-food" class="button" data-admin disabled>+ Tambah makanan</button></div><p class="catalog-note">Masukkan kalori bagi <strong>100 gram</strong> makanan. Contoh: 130 kcal / 100 g = 1.30 kcal / g.</p><div id="catalog-table"></div></div></section>
+      <footer class="page-footer">NutriTrack <span>Anggaran kalori bergantung pada jenis makanan, resipi dan ketepatan penimbang.</span></footer>
+    </main>
+  </div>
+  <dialog id="login-dialog"><form id="login-form"><div class="dialog-heading"><div><p class="eyebrow">AKSES TERKAWAL</p><h2>Akses pentadbir</h2></div><button type="button" class="close-button" data-close aria-label="Tutup">×</button></div><p class="muted">Masukkan kata laluan untuk tambah atau edit rekod dan rujukan kalori. Akses tiada had masa sepanjang sesi browser. Tekan Kunci akses pentadbir apabila selesai.</p><label>Kata laluan<input name="password" type="password" minlength="8" maxlength="1024" autocomplete="current-password" required></label><p class="form-error" role="alert"></p><button class="button full-width" type="submit">Buka akses</button></form></dialog>
+  <dialog id="meal-dialog"><form id="meal-form"><div class="dialog-heading"><h2 id="meal-title">Tambah rekod makanan</h2><button type="button" class="close-button" data-close aria-label="Tutup">×</button></div><label>Jenis makanan<input name="food" list="food-options" maxlength="100" required><datalist id="food-options"></datalist></label><div class="form-grid"><label>Berat (g)<input name="weight_g" type="number" min="0.1" max="100000" step="0.1" required></label><label>Jumlah kalori (kcal)<input name="calories" type="number" min="0" max="1000000" step="0.01" required></label></div><p class="help-text">Kalori dikira daripada rujukan apabila jenis makanan atau berat berubah. Anda boleh ubah jumlahnya.</p><label>Tarikh & waktu makan (Malaysia)<input name="eaten_at" type="datetime-local" required></label><label>Gambar makanan (pilihan, maksimum 2 MB)<input name="image" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="help-text" id="image-help">Gambar sedia ada dikekalkan jika tiada gambar baharu dipilih.</p><p class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" class="button button-outline" data-close>Batal</button><button class="button" type="submit">Simpan rekod</button></div></form></dialog>
+  <dialog id="food-dialog"><form id="food-form"><div class="dialog-heading"><h2 id="food-title">Tambah rujukan makanan</h2><button type="button" class="close-button" data-close aria-label="Tutup">×</button></div><label>Jenis makanan<input name="food" maxlength="100" required></label><label>Kalori per 100 gram (kcal)<input name="calories_per_100g" type="number" min="0" max="10000" step="0.01" required></label><label>Nota / cara penyediaan<textarea name="note" maxlength="500" rows="3"></textarea></label><p class="help-text">Nama makanan ini turut menjadi pilihan kelas untuk pengesanan AI.</p><p class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" class="button button-outline" data-close>Batal</button><button class="button" type="submit">Simpan makanan</button></div></form></dialog>
+</body>
+</html>

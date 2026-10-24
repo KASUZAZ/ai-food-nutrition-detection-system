@@ -1,0 +1,13 @@
+tmp/
+.venv/
+__pycache__/
+**/__pycache__/
+**/*.pyc
+data/*.sqlite3*
+data/*.local.json
+.env*.local
+output/
+assets/
+arduino/
+tests/
+.git/

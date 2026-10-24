@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "outputDirectory": "web",
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index?route=/api/:path*" },
+    { "source": "/latest.jpg", "destination": "/api/index?route=/latest.jpg" },
+    { "source": "/health", "destination": "/api/index?route=/health" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {"key":"X-Content-Type-Options","value":"nosniff"},
+        {"key":"X-Frame-Options","value":"DENY"},
+        {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},
+        {"key":"Content-Security-Policy","value":"default-src 'self'; img-src 'self' blob: data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
+      ]
+    }
+  ]
+}

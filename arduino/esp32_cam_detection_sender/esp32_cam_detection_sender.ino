@@ -40,6 +40,7 @@ struct DetectionResult {
   String food;
   float caloriePerGram;
   float confidence;
+  String detectionId;
 };
 
 unsigned long lastDetectionMs = 0;
@@ -93,10 +94,25 @@ String extractJsonString(const String &body, const String &key) {
   int firstQuote = body.indexOf('"', colonIndex + 1);
   if (firstQuote < 0) return "";
 
-  int secondQuote = body.indexOf('"', firstQuote + 1);
-  if (secondQuote < 0) return "";
-
-  return body.substring(firstQuote + 1, secondQuote);
+  String value = "";
+  bool escaped = false;
+  for (int i = firstQuote + 1; i < body.length(); i++) {
+    char c = body[i];
+    if (escaped) {
+      if (c == 'n') value += '\n';
+      else if (c == 'r') value += '\r';
+      else if (c == 't') value += '\t';
+      else value += c;
+      escaped = false;
+    } else if (c == '\\') {
+      escaped = true;
+    } else if (c == '"') {
+      return value;
+    } else {
+      value += c;
+    }
+  }
+  return "";
 }
 
 float extractJsonFloat(const String &body, const String &key, float fallback) {
@@ -194,7 +210,7 @@ void connectWiFi() {
   Serial.println(WiFi.localIP());
 }
 
-bool sendToScale(String food, float caloriePerGram, float confidence) {
+bool sendToScale(String food, float caloriePerGram, float confidence, String detectionId) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi disconnected. Cannot send to scale.");
     return false;
@@ -204,6 +220,7 @@ bool sendToScale(String food, float caloriePerGram, float confidence) {
   url += "?name=" + urlencode(food);
   url += "&cal=" + String(caloriePerGram, 3);
   url += "&conf=" + String(confidence, 2);
+  url += "&detection_id=" + urlencode(detectionId);
 
   HTTPClient http;
   http.begin(url);
@@ -273,6 +290,7 @@ bool requestAiDetection(DetectionResult &result) {
   result.caloriePerGram = extractJsonFloat(response, "cal", result.caloriePerGram);
   result.confidence = extractJsonFloat(response, "confidence", 0.0);
   result.confidence = extractJsonFloat(response, "conf", result.confidence);
+  result.detectionId = extractJsonString(response, "detection_id");
 
   return true;
 }
@@ -280,7 +298,7 @@ bool requestAiDetection(DetectionResult &result) {
 void runDetection() {
   DetectionResult result;
   if (requestAiDetection(result)) {
-    sendToScale(result.food, result.caloriePerGram, result.confidence);
+    sendToScale(result.food, result.caloriePerGram, result.confidence, result.detectionId);
   } else {
     Serial.println("AI detection failed");
   }

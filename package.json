@@ -1,0 +1,22 @@
+{
+  "name": "nutritrack-food-nutrition",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node --check api/index.mjs",
+    "db:setup": "node --env-file=.env.local tools/setup_cloud_database.mjs",
+    "test:cloud": "node --test tests/cloud_api.test.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.2.0",
+    "@vercel/blob": "2.8.2",
+    "sharp": "0.35.5"
+  },
+  "overrides": {
+    "zod": "4.6.6"
+  }
+}
