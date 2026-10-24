@@ -13,6 +13,12 @@ from nutrition_web import AppState, AiRequestHandler, ROOT, Store
 DEFAULT_MODEL = "openai/clip-vit-base-patch32"
 
 
+def food_prompt(food):
+    prompt = f"a clear photo of {food['food']} food on a plate"
+    note = food.get("note", "").strip()
+    return f"{prompt}. {note}" if note else prompt
+
+
 class FoodClassifier:
     def __init__(self, foods, model_id, confidence_threshold, margin_threshold):
         # Lazy imports keep manual website mode independent of PyTorch.
@@ -40,9 +46,10 @@ class FoodClassifier:
     def classify(self, image):
         with self.lock, self.torch.inference_mode():
             labels = list(self.foods)
-            prompts = [f"a clear photo of {label} food on a plate" for label in labels]
+            prompts = [food_prompt(self.foods[label]) for label in labels]
             inputs = self.processor(text=prompts, images=image.convert("RGB"),
-                                    return_tensors="pt", padding=True)
+                                    return_tensors="pt", padding=True, truncation=True,
+                                    max_length=self.model.config.text_config.max_position_embeddings)
             inputs = {name: value.to(self.device) for name, value in inputs.items()}
             logits = self.model(**inputs).logits_per_image[0]
             probabilities = logits.softmax(dim=0).cpu().tolist()

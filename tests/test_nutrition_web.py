@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from nutrition_web import AppState, AiRequestHandler, ROOT, Store
 from cloud_bridge import CloudBridge
+from real_ai_server import food_prompt
 from PIL import Image
 
 
@@ -147,11 +148,26 @@ class WebsiteTests(unittest.TestCase):
         self.assertEqual(self.request("/api/foods", "POST", data)[0], 201)
         saved = next(f for f in self.classifier.foods if f["food"] == "Nasi lemak")
         self.assertAlmostEqual(saved["calorie_per_gram"], 2.2)
+        self.assertIn("Santan", food_prompt(saved))
         self.assertEqual(self.request("/api/foods", "POST", data)[0], 409)
         data["calories_per_100g"] = 250
+        data["note"] = "Coconut rice with sambal and peanuts"
         self.assertEqual(self.request(f"/api/foods/{saved['id']}", "PUT", data)[0], 200)
-        self.assertEqual(next(f for f in self.classifier.foods if f["id"] == saved["id"])["calorie_per_gram"], 2.5)
+        updated = next(f for f in self.classifier.foods if f["id"] == saved["id"])
+        self.assertEqual(updated["calorie_per_gram"], 2.5)
+        self.assertIn(data["note"], food_prompt(updated))
         self.assertEqual(self.request("/api/foods/99999", "PUT", data)[0], 404)
+
+    def test_cloud_catalog_notes_reach_ai_and_refresh_when_edited(self):
+        bridge = self.make_bridge()
+        foods = self.store.foods()
+        foods[0]["note"] = "Fresh red apple with skin"
+        bridge.update_catalog(foods)
+        self.assertIn(foods[0]["note"], food_prompt(self.classifier.foods[0]))
+        foods[0]["note"] = "Sliced green apple with skin"
+        bridge.update_catalog(foods)
+        self.assertIn(foods[0]["note"], food_prompt(self.classifier.foods[0]))
+        self.assertNotIn("Fresh red", food_prompt(self.classifier.foods[0]))
 
     def test_sensor_saves_once_per_placement_across_restart(self):
         self.detection()

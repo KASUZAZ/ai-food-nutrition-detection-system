@@ -17,9 +17,9 @@ class CloudBridge:
         self.url = self.config["url"].rstrip("/")
         parsed = urlparse(self.url)
         if parsed.scheme != "https" and not (parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1")):
-            raise ValueError("Cloud bridge memerlukan URL HTTPS")
+            raise ValueError("Cloud bridge requires an HTTPS URL")
         if len(self.config.get("token", "")) < 32 or not self.config.get("device_id"):
-            raise ValueError("Konfigurasi cloud bridge tidak lengkap")
+            raise ValueError("Cloud bridge configuration is incomplete")
         self.last_photo = None
         self.last_catalog = None
         self.last_error = None
@@ -34,7 +34,7 @@ class CloudBridge:
             """)
             # Never execute an uncertain command twice after a laptop restart.
             store.db.execute("UPDATE cloud_commands SET status='failed', message=? WHERE status='started'",
-                             ("Laptop dimulakan semula; keputusan arahan sebelumnya tidak dapat disahkan.",))
+                             ("Laptop restarted; the previous command result could not be confirmed.",))
 
     def request(self, path, payload):
         req = Request(self.url + path, data=json.dumps(payload, allow_nan=False).encode(),
@@ -50,7 +50,7 @@ class CloudBridge:
 
     def update_catalog(self, foods):
         if not isinstance(foods, list) or len(foods) < 2:
-            raise ValueError("Pangkalan makanan cloud tidak lengkap")
+            raise ValueError("Cloud food catalog is incomplete")
         catalog = json.dumps(foods, sort_keys=True)
         if catalog == self.last_catalog:
             return
@@ -73,19 +73,19 @@ class CloudBridge:
             cursor = store.db.execute("INSERT OR IGNORE INTO cloud_commands(id,status,message) VALUES(?,'started','')", (ident,))
             if not cursor.rowcount:
                 return
-        status, message = "failed", "Arahan gagal"
+        status, message = "failed", "Command failed"
         try:
             created = datetime.fromisoformat(command["created_at"].replace("Z", "+00:00"))
             if (datetime.now(timezone.utc) - created).total_seconds() > 90:
-                raise ValueError("Arahan sudah luput")
+                raise ValueError("Command expired")
             result = self.state.device_request("/api/" + action, "POST")
             status = "succeeded"
-            message = "Tare selesai pada penimbang." if action == "tare" else "Kamera menerima permintaan gambar. Tunggu keputusan AI."
+            message = "Scale tared successfully." if action == "tare" else "Camera received the photo request. Waiting for the AI result."
             if result.get("ok") is False:
-                raise ValueError(result.get("error", "Peranti menolak arahan"))
+                raise ValueError(result.get("error", "Device rejected the command"))
         except (OSError, ValueError) as error:
             status = "failed"
-            message = str(error)[:500] or "Peranti tidak dapat dihubungi"
+            message = str(error)[:500] or "Cannot reach the device"
         with store.lock, store.db:
             store.db.execute("UPDATE cloud_commands SET status=?,message=? WHERE id=?", (status,message,ident))
 
@@ -100,7 +100,7 @@ class CloudBridge:
                 payload["image_base64"] = base64.b64encode(raw).decode()
         reply = self.request("/api/device/sync", payload)
         if not reply.get("ok"):
-            raise ValueError("Cloud menolak bacaan")
+            raise ValueError("Cloud rejected the reading")
         self.last_photo = photo
         self.update_catalog(reply["foods"])
         store = self.state.store
@@ -122,7 +122,7 @@ class CloudBridge:
             if image:
                 meal["image_base64"] = base64.b64encode(image).decode()
             if not self.request("/api/device/meal", meal).get("ok"):
-                raise ValueError("Cloud belum mengakui rekod makanan")
+                raise ValueError("Cloud has not acknowledged the meal record")
             with store.lock, store.db:
                 store.db.execute("INSERT OR IGNORE INTO cloud_sent(meal_id) VALUES(?)", (meal["id"],))
 

@@ -178,6 +178,13 @@ Upload semula **kedua-dua sketch** kerana penyimpanan automatik memerlukan ID ga
 
 CSV `data/food_calories.csv` diimport sekali semasa database baharu dicipta. Selepas itu tambah dan edit makanan di tab **Pangkalan kalori** menggunakan kata laluan. Borang menggunakan kcal per 100 g; server menukarnya kepada kcal/g dan mengemas kini pilihan AI tanpa restart. Rekod sejarah mengekalkan nilai kalori asal. Nilai ini anggaran, bukan analisis makmal.
 
+Website kini menggunakan Bahasa Inggeris; tab tersebut dilabel **Calorie database**.
+Nama makanan dan **Notes / preparation** kedua-duanya digunakan oleh AI. Nota
+boleh menerangkan warna dan bentuk, contohnya `Fresh green apple, round shape,
+smooth skin`. Perubahan cloud digunakan selepas diselaraskan ke laptop yang
+hidup dan tersambung. Selepas kemas kini kod AI ini, restart server laptop sekali;
+edit makanan seterusnya tidak memerlukan restart.
+
 Untuk projek akhir, gunakan kelas yang rupa visualnya jelas dan ambil gambar contoh sebenar bagi setiap kelas untuk menguji threshold. Default server menerima keputusan jika confidence sekurang-kurangnya `0.35` dan beza dengan pilihan kedua sekurang-kurangnya `0.08`.
 
 Threshold boleh dilaras tanpa mengubah kod:

@@ -31,65 +31,65 @@ def now_iso():
 
 def number(value, label, maximum=100000):
     if isinstance(value, bool):
-        raise ValueError(f"{label} mesti nombor yang sah")
+        raise ValueError(f"{label} must be a valid number")
     try:
         value = float(value)
     except (ValueError, TypeError):
-        raise ValueError(f"{label} mesti nombor yang sah") from None
+        raise ValueError(f"{label} must be a valid number") from None
     if not math.isfinite(value) or not 0 <= value <= maximum:
-        raise ValueError(f"{label} mesti antara 0 dan {maximum}")
+        raise ValueError(f"{label} must be between 0 and {maximum}")
     return value
 
 
 def text_field(value, label, limit=100):
     if not isinstance(value, str) or not value.strip() or len(value.strip()) > limit:
-        raise ValueError(f"{label} diperlukan (maksimum {limit} aksara)")
+        raise ValueError(f"{label} is required (maximum {limit} characters)")
     value = value.strip()
     if any(ord(c) < 32 for c in value):
-        raise ValueError(f"{label} mengandungi aksara tidak sah")
+        raise ValueError(f"{label} contains invalid characters")
     return value
 
 
 def food_values(data):
-    name = text_field(data.get("food"), "Jenis makanan")
-    rate = number(data.get("calories_per_100g"), "Kalori/100g", 10000) / 100
+    name = text_field(data.get("food"), "Food type")
+    rate = number(data.get("calories_per_100g"), "Calories/100g", 10000) / 100
     note = data.get("note", "")
     if not isinstance(note, str) or len(note) > 500:
-        raise ValueError("Nota maksimum 500 aksara")
+        raise ValueError("Notes must not exceed 500 characters")
     return name, rate, note
 
 
 def meal_values(data):
-    name = text_field(data.get("food"), "Jenis makanan")
-    weight = number(data.get("weight_g"), "Berat", 100000)
+    name = text_field(data.get("food"), "Food type")
+    weight = number(data.get("weight_g"), "Weight", 100000)
     if weight <= 0:
-        raise ValueError("Berat mesti lebih daripada 0 g")
-    calories = number(data.get("calories"), "Kalori", 1000000)
+        raise ValueError("Weight must be greater than 0 g")
+    calories = number(data.get("calories"), "Calories", 1000000)
     try:
         eaten = datetime.fromisoformat(data["eaten_at"])
         if eaten.tzinfo is None:
             eaten = eaten.replace(tzinfo=MYT)
         eaten_at = eaten.astimezone(MYT).isoformat(timespec="seconds")
     except (KeyError, TypeError, ValueError, OverflowError):
-        raise ValueError("Tarikh dan waktu makan tidak sah") from None
+        raise ValueError("Meal date and time is invalid") from None
     return name, weight, calories, eaten_at
 
 
 def jpeg_bytes(raw):
     from PIL import Image, UnidentifiedImageError
     if not raw or len(raw) > MAX_IMAGE_BYTES:
-        raise ValueError("Gambar mesti antara 1 bait dan 2 MB")
+        raise ValueError("Image must be between 1 byte and 2 MB")
     try:
         with Image.open(io.BytesIO(raw)) as image:
             if image.width * image.height > 16000000:
-                raise ValueError("Resolusi gambar terlalu besar")
+                raise ValueError("Image resolution is too large")
             image.load()
             image.thumbnail((1600, 1600))
             output = io.BytesIO()
             image.convert("RGB").save(output, format="JPEG", quality=88)
             return output.getvalue()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-        raise ValueError("Gambar tidak sah") from None
+        raise ValueError("Image is invalid") from None
 
 
 class Store:
@@ -119,7 +119,7 @@ class Store:
                 with Path(seed_csv).open(encoding="utf-8-sig", newline="") as file:
                     self.db.executemany(
                         "INSERT INTO foods(food, calorie_per_gram, note) VALUES(?,?,?)",
-                        [(r["food"], number(r["calorie_per_gram"], "Kalori/g", 100),
+                        [(r["food"], number(r["calorie_per_gram"], "Calories/g", 100),
                           r.get("note", "")) for r in csv.DictReader(file)],
                     )
 
@@ -130,7 +130,7 @@ class Store:
 
     def set_password(self, password):
         if not isinstance(password, str) or not 8 <= len(password) <= 1024:
-            raise ValueError("Kata laluan mesti 8 hingga 1024 aksara")
+            raise ValueError("Password must contain 8 to 1024 characters")
         salt = secrets.token_bytes(16)
         digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200000)
         with self.lock, self.db:
@@ -148,7 +148,7 @@ class Store:
             if food_id is None:
                 self.db.execute("INSERT INTO foods(food,calorie_per_gram,note) VALUES(?,?,?)", (name, rate, note))
             elif not self.db.execute("UPDATE foods SET food=?,calorie_per_gram=?,note=? WHERE id=?", (name, rate, note, food_id)).rowcount:
-                raise LookupError("Makanan tidak ditemui")
+                raise LookupError("Food not found")
 
     def meals(self):
         with self.lock:
@@ -172,7 +172,7 @@ class Store:
                 image=COALESCE(?,image),updated_at=? WHERE id=?""",
                 (name, weight, calories, eaten_at, image, stamp, meal_id))
             if not cursor.rowcount:
-                raise LookupError("Rekod tidak ditemui")
+                raise LookupError("Record not found")
             return meal_id
 
     def meal_image(self, meal_id):
@@ -193,7 +193,7 @@ class AppState:
             store.set_password(password)
         credentials = store.credentials()
         if credentials is None:
-            raise ValueError("Tetapkan kata laluan pentadbir dahulu")
+            raise ValueError("Set an admin password first")
         self.salt, self.password_hash = credentials
         self.sessions = set()
         self.attempts = {}
@@ -203,7 +203,7 @@ class AppState:
         self.detection_measurement = None
         self.scale = None
         self.scale_seen = 0
-        self.scale_error = "Penimbang belum disambungkan"
+        self.scale_error = "Scale is not connected yet"
         self.stop = threading.Event()
         self.sync_catalog()
 
@@ -239,7 +239,7 @@ class AppState:
 
     def device_request(self, path, method="GET"):
         if not self.scale_url:
-            raise ValueError("Tetapkan --scale-url kepada IP ESP32 penimbang dahulu")
+            raise ValueError("Set --scale-url to the ESP32 scale IP first")
         req = Request(self.scale_url + path, data=b"" if method == "POST" else None, method=method)
         with urlopen(req, timeout=2) as response:
             return json.load(response)
@@ -262,7 +262,7 @@ class AppState:
             self.detection_measurement = measurement
 
     def accept_scale(self, data):
-        weight = number(data.get("weight_g"), "Berat", 100000)
+        weight = number(data.get("weight_g"), "Weight", 100000)
         with self.lock:
             self.scale = data
             self.scale_seen = time.monotonic()
@@ -329,21 +329,21 @@ class AiRequestHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
-            raise ValueError("Content-Length tidak sah") from None
+            raise ValueError("Content-Length is invalid") from None
         if not 0 < length <= limit:
-            raise ValueError("Saiz permintaan tidak sah / terlalu besar")
+            raise ValueError("Request size is invalid or too large")
         self.connection.settimeout(15)
         raw = self.rfile.read(length)
         if len(raw) != length:
-            raise ValueError("Permintaan tidak lengkap")
+            raise ValueError("Incomplete request")
         return raw
 
     def read_json(self):
         if self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
-            raise ValueError("Content-Type mesti application/json")
+            raise ValueError("Content-Type must be application/json")
         data = json.loads(self.read_body(3 * 1024 * 1024))
         if not isinstance(data, dict):
-            raise ValueError("Objek JSON diperlukan")
+            raise ValueError("A JSON object is required")
         return data
 
     def do_GET(self):
@@ -375,7 +375,7 @@ class AiRequestHandler(BaseHTTPRequestHandler):
             name, mime = assets[path]
             return self.send_bytes(200, (ROOT / "web" / name).read_bytes(), mime,
                                    {"Content-Security-Policy": "default-src 'self'; img-src 'self' blob: data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"})
-        self.send_json(404, {"error": "Tidak ditemui"})
+        self.send_json(404, {"error": "Not found"})
 
     def do_POST(self):
         self.mutate()
@@ -388,7 +388,7 @@ class AiRequestHandler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
         if origin and origin not in ("http://" + host, "https://" + host):
-            return self.send_json(403, {"error": "Origin tidak dibenarkan"})
+            return self.send_json(403, {"error": "Origin is not allowed"})
         path = urlparse(self.path).path
         try:
             if path == "/classify" and self.command == "POST":
@@ -396,14 +396,14 @@ class AiRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/login" and self.command == "POST":
                 password = self.read_json().get("password", "")
                 if not isinstance(password, str) or len(password) > 1024:
-                    raise ValueError("Kata laluan tidak sah")
+                    raise ValueError("Password is invalid")
                 token, status = self.state.login(password, self.client_address[0])
                 if not token:
-                    return self.send_json(status, {"error": "Terlalu banyak percubaan. Tunggu 60 saat." if status == 429 else "Kata laluan salah"})
+                    return self.send_json(status, {"error": "Too many attempts. Wait 60 seconds." if status == 429 else "Incorrect password"})
                 secure = "; Secure" if getattr(self.state, "secure_cookies", False) else ""
                 return self.send_json(200, {"ok": True}, {"Set-Cookie": f"nutrition_session={token}; HttpOnly; SameSite=Strict; Path=/{secure}"})
             if not self.state.authenticated(self.token()):
-                return self.send_json(401, {"error": "Masukkan kata laluan pentadbir dahulu"})
+                return self.send_json(401, {"error": "Enter the admin password first"})
             data = self.read_json()
             if path == "/api/logout" and self.command == "POST":
                 self.state.logout(self.token())
@@ -426,22 +426,22 @@ class AiRequestHandler(BaseHTTPRequestHandler):
                     try:
                         image = jpeg_bytes(base64.b64decode(data["image_base64"], validate=True))
                     except (ValueError, TypeError):
-                        raise ValueError("Gambar tidak sah atau melebihi 2 MB") from None
+                        raise ValueError("Image is invalid or exceeds 2 MB") from None
                 meal_id = self.state.store.save_meal(data, ident, image=image)
                 return self.send_json(201 if create else 200, {"ok": True, "id": meal_id})
-            self.send_json(404, {"error": "Tidak ditemui"})
+            self.send_json(404, {"error": "Not found"})
         except (ValueError, TypeError, UnicodeError) as exc:
             self.send_json(400, {"error": str(exc)})
         except LookupError as exc:
             self.send_json(404, {"error": str(exc)})
         except sqlite3.IntegrityError:
-            self.send_json(409, {"error": "Nama makanan sudah digunakan atau data tidak sah"})
+            self.send_json(409, {"error": "Food name already exists or data is invalid"})
         except (OSError, URLError) as exc:
-            self.send_json(503, {"error": f"Peranti tidak dapat dihubungi: {exc}"})
+            self.send_json(503, {"error": f"Cannot reach the device: {exc}"})
 
     def classify(self):
         if not self.state.classifier:
-            return self.send_json(503, {"error": "Mod web sahaja; model AI belum dimuatkan"})
+            return self.send_json(503, {"error": "Web-only mode; AI model is not loaded"})
         if self.headers.get("Content-Type", "").split(";", 1)[0] != "image/jpeg":
             return self.send_json(415, {"error": "Content-Type must be image/jpeg"})
         raw = jpeg_bytes(self.read_body(MAX_IMAGE_BYTES))

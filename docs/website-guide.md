@@ -80,8 +80,21 @@ Formula sensor: `berat (g) × kalori per gram`.
 
 Perubahan digunakan pada pengesanan AI berikutnya tanpa restart. Rekod sejarah
 mengekalkan kalori asal supaya perubahan rujukan tidak menukar rekod lama.
-CLIP membandingkan gambar dengan nama kelas; menambah nama bukan proses
-melatih model dan tidak menjamin makanan itu boleh dikenal pasti tepat.
+CLIP membandingkan gambar dengan nama makanan dan nota sebagai petunjuk visual.
+Contohnya, untuk `Apple`, masukkan nota `Fresh green apple, round shape, smooth skin`.
+Warna, bentuk, bahan dan cara penyediaan boleh diterangkan dalam nota; gunakan
+Bahasa Inggeris untuk penerangan kepada model CLIP. Menambah nota bukan proses
+melatih semula model dan tidak menjamin ketepatan pengecaman. Nota panjang
+dipendekkan mengikut had konteks model supaya inferens tidak gagal.
+
+Antara muka website kini dalam Bahasa Inggeris: `Calorie database` →
+`Unlock admin access` → `+ Add food` atau `Edit` → isi nama, kalori dan
+`Notes / preparation` → `Save food`. Nama makanan yang anda isi sendiri kekal
+seperti ditaip. Waktu rekod masih menggunakan waktu Malaysia.
+Untuk website cloud, perubahan diselaraskan secara automatik apabila server
+laptop tersambung, kemudian digunakan pada pengesanan berikutnya tanpa restart.
+Selepas mengemas kini kod AI ini buat kali pertama, mulakan semula server laptop
+sekali untuk memuatkan fungsi penggunaan nota.
 
 CSV `data/food_calories.csv` digunakan sebagai data permulaan pada database
 baharu sahaja. Selepas itu edit melalui website; perubahan CSV tidak menimpa
